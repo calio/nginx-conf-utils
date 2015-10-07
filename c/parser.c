@@ -20,6 +20,19 @@ do {                                                                    \
 } while (0)
 
 
+void my_indent(parser_t *p) {
+    int i;
+    for (i = 0; i < p->indent; i++) {
+        printf("  ");
+    }
+}
+
+void print_info(parser_t *p, char *name, token_t *t)
+{
+    my_indent(p);
+    printf("%s:%.*s\n", name, (int) (t->end - t->start), t->start);
+}
+
 void print_tk(token_t *t)
 {
     if (t->type == TK_SPACE || t->type == TK_MISC || t->type == TK_COMMENT) {
@@ -27,13 +40,6 @@ void print_tk(token_t *t)
     }
 
     printf("[%d]%.*s\n", t->type, (int) (t->end - t->start), t->start);
-}
-
-void my_indent(parser_t *p) {
-    int i;
-    for (i = 0; i < p->indent; i++) {
-        printf(" ");
-    }
 }
 
 int parse_args(parser_t *p, lexer_t *l, token_t *t)
@@ -51,13 +57,12 @@ int parse_args(parser_t *p, lexer_t *l, token_t *t)
     while (t->type != TK_SEMI_COLON && t->type != TK_OPEN_BLOCK) {
         (void) get_token(l, t);
 
-        if (t->type != TK_ID) {
+        if (t->type != TK_ID && t->type != TK_STRING) {
             expect("TK_ID", t);
             return -1;
         }
 
-        my_indent(p);
-        printf("arg:%.*s\n", (int) (t->end - t->start), t->start);
+        print_info(p, "arg", t);
 
         if (peek_token(l, t) == NULL) {
             return -1;
@@ -80,8 +85,7 @@ int parse_directive(parser_t *p, lexer_t *l, token_t *t)
         return -1;
     }
 
-    my_indent(p);
-    printf("directive:%.*s\n", (int) (t->end - t->start), t->start);
+    print_info(p, "directive", t);
 
     return 0;
 }
@@ -114,9 +118,116 @@ int parse_block(parser_t *p, lexer_t *l, token_t *t)
     return 0;
 }
 
+int parse_map_content(parser_t *p, lexer_t *l, token_t *t)
+{
+    while (1) {
+        if (get_token(l, t) == NULL) {
+            return -1;
+        }
+
+        if (t->type != TK_ID && t->type != TK_STRING) {
+            expect("TK_ID or TK_STRING", t);
+            return -1;
+        }
+        print_info(p, "key", t);
+
+        if (get_token(l, t) == NULL) {
+            return -1;
+        }
+
+        if (t->type != TK_ID && t->type != TK_STRING) {
+            expect("TK_ID or TK_STRING", t);
+            return -1;
+        }
+        print_info(p, "value", t);
+
+        if (get_token(l, t) == NULL) {
+            return -1;
+        }
+
+        if (t->type != TK_SEMI_COLON) {
+            expect("TK_SEMI_COLON", t);
+            return -1;
+        }
+
+        if (peek_token(l, t) == NULL) {
+            return -1;
+        }
+
+        if (t->type == TK_CLOSE_BLOCK) {
+            break;
+        }
+    }
+
+    return 0;
+}
+
+int parse_map(parser_t *p, lexer_t *l, token_t *t)
+{
+    /* read "map" */
+    (void) get_token(l, t);
+    print_info(p, "directive", t);
+
+    if (get_token(l, t) == NULL) {
+        return -1;
+    }
+
+    if (t->type != TK_ID && t->type != TK_STRING) {
+        expect("TK_ID or TK_STRING", t);
+        return -1;
+    }
+    print_info(p, "arg", t);
+
+    if (get_token(l, t) == NULL) {
+        return -1;
+    }
+
+    if (t->type != TK_ID) {
+        expect("TK_ID", t);
+        return -1;
+    }
+    print_info(p, "arg", t);
+
+    if (get_token(l, t) == NULL) {
+        return -1;
+    }
+
+    if (t->type != TK_OPEN_BLOCK) {
+        expect("TK_OPEN_BLOCK", t);
+        return -1;
+    }
+    p->indent++;
+
+    if (parse_map_content(p, l, t) != 0) {
+        return -1;
+    }
+
+    if (get_token(l, t) == NULL) {
+        return -1;
+    }
+
+    if (t->type != TK_CLOSE_BLOCK) {
+        expect("TK_OPEN_BLOCK", t);
+        return -1;
+    }
+    p->indent--;
+
+    return 0;
+}
+
 int parse_cmd(parser_t *p, lexer_t *l, token_t *t)
 {
     int rc;
+
+    if (peek_token(l, t) == NULL) {
+        return -1;
+    }
+
+    if (t->type == TK_ID && t->end - t->start == 3
+        && strncmp("map", t->start, 3) == 0)
+    {
+        return parse_map(p, l, t);
+    }
 
     rc = parse_directive(p, l, t);
     if (rc != 0) {
