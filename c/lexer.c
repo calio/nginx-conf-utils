@@ -204,6 +204,8 @@ token_t *get_token(lexer_t *l, token_t *t)
     while (1) {
         if (l->p >= l->pe) {
             t->type = TK_EOF;
+            t->start = NULL;
+            t->end = NULL;
             return t;
         }
 

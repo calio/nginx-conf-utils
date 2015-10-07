@@ -3,14 +3,7 @@
 #include <string.h>
 #include "lexer.h"
 #include "parser.h"
-
-
-#define TOKEN(name) #name
-const char *token_name [] = {
-#include "token.h"
-NULL
-};
-#undef TOKEN
+#include "util.h"
 
 
 #define expect(EXP, t)                                                  \
@@ -31,15 +24,6 @@ void print_info(parser_t *p, char *name, token_t *t)
 {
     my_indent(p);
     printf("%s:%.*s\n", name, (int) (t->end - t->start), t->start);
-}
-
-void print_tk(token_t *t)
-{
-    if (t->type == TK_SPACE || t->type == TK_MISC || t->type == TK_COMMENT) {
-        //return;
-    }
-
-    printf("[%d]%.*s\n", t->type, (int) (t->end - t->start), t->start);
 }
 
 int parse_args(parser_t *p, lexer_t *l, token_t *t)

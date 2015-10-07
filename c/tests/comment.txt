@@ -1,0 +1,4 @@
+[TK_SPACE]   
+[TK_COMMENT]# this is a comment
+
+[TK_EOF]
