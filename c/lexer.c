@@ -1,14 +1,65 @@
-
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
-#include "parser.h"
+#include "lexer.h"
 
-void cp_init(parser_ctx *ctx) {
-    return;
+
+static long get_fsize(FILE *f)
+{
+    long pos;
+    long rc;
+
+    pos = ftell(f);
+    fseek(f, 0, SEEK_END);
+
+    rc = ftell(f);
+    fseek(f, pos, SEEK_SET);
+
+    return rc;
 }
 
-int cp_lex(parser_ctx *ctx, token_t *t) {
+int lexer_init(lexer_t *l, FILE *f)
+{
+    long rc;
+    size_t size;
+    size_t s;
+
+    rc = get_fsize(f);
+    if (rc < 0) {
+        perror("get size error");
+        return -1;
+    }
+
+    size = (size_t) rc;
+
+    l->buf = malloc(size);
+    if (l->buf == NULL) {
+        perror("Malloc failed");
+        return -1;
+    }
+
+    s = fread(l->buf, 1, size, f);
+
+    if (s < size) {
+        perror("Read file error");
+        return -1;
+    }
+
+    l->p = l->buf;
+    l->pe = l->buf + s;
+    l->state = start;
+
+    return 0;
+}
+
+void lexer_free(lexer_t *l)
+{
+    free(l->buf);
+}
+
+static int cp_lex(lexer_t *ctx, token_t *t)
+{
     char ch;
     int skip_char = 0;
 
@@ -125,3 +176,22 @@ int cp_lex(parser_ctx *ctx, token_t *t) {
 
     return 0;
 }
+
+token_t *get_token(lexer_t *l, token_t *t)
+{
+    int  rc;
+
+    if (l->p >= l->pe) {
+        t->type = TK_EOF;
+        return t;
+    }
+
+    rc  = cp_lex(l, t);
+    if (rc != 0) {
+        printf("parsing error: %.*s", 10, l->p);
+        return NULL;
+    }
+
+    return t;
+}
+
