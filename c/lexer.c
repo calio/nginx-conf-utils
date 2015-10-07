@@ -19,6 +19,17 @@ static long get_fsize(FILE *f)
     return rc;
 }
 
+void lexer_skip(lexer_t *l, int comment, int spaces)
+{
+    if (comment) {
+        l->skip_comment = 1;
+    }
+
+    if (spaces) {
+        l->skip_spaces = 1;
+    }
+}
+
 int lexer_init(lexer_t *l, FILE *f)
 {
     long rc;
@@ -49,6 +60,9 @@ int lexer_init(lexer_t *l, FILE *f)
     l->p = l->buf;
     l->pe = l->buf + s;
     l->state = start;
+    l->peeked = 0;
+    l->skip_comment = 0;
+    l->skip_spaces = 0;
 
     return 0;
 }
@@ -63,8 +77,6 @@ static int cp_lex(lexer_t *ctx, token_t *t)
     char ch;
     int skip_char = 0;
 
-    assert(ctx->p < ctx->pe);
-
     t->type = TK_NONE;
     t->start = ctx->p;
 
@@ -75,10 +87,12 @@ static int cp_lex(lexer_t *ctx, token_t *t)
         case start:
             if (ch == '#') {
                 /* comment line */
+                t->type = TK_COMMENT;
                 ctx->state = parsing_comment;
                 t->start = ctx->p - 1;
             } else if (ch == ' ' || ch == '\n' || ch == '\t') {
                 /* space */
+                t->type = TK_SPACE;
                 ctx->state = parsing_space;
                 t->start = ctx->p - 1;
             } else if (ch == '{') {
@@ -97,7 +111,7 @@ static int cp_lex(lexer_t *ctx, token_t *t)
                 /* line end */
                 t->start = ctx->p - 1;
                 t->end = ctx->p;
-                t->type = TK_MISC;
+                t->type = TK_SEMI_COLON;
                 return 0;
             } else {
                 /* parsing string/token */
@@ -181,17 +195,48 @@ token_t *get_token(lexer_t *l, token_t *t)
 {
     int  rc;
 
-    if (l->p >= l->pe) {
-        t->type = TK_EOF;
+    if (l->peeked) {
+        memcpy(t, &l->top_token, sizeof(token_t));
+        l->peeked = 0;
         return t;
     }
 
-    rc  = cp_lex(l, t);
-    if (rc != 0) {
-        printf("parsing error: %.*s", 10, l->p);
-        return NULL;
+    while (1) {
+        if (l->p >= l->pe) {
+            t->type = TK_EOF;
+            return t;
+        }
+
+        rc  = cp_lex(l, t);
+        if (rc != 0) {
+            printf("parsing error: %.*s", 10, l->p);
+            return NULL;
+        }
+
+        if (l->skip_comment && t->type == TK_COMMENT) {
+            continue;
+        }
+
+        if (l->skip_spaces && t->type == TK_SPACE) {
+            continue;
+        }
+
+        break;
     }
 
     return t;
+}
+
+token_t *peek_token(lexer_t *l, token_t *t)
+{
+    if (l->peeked) {
+        return &l->top_token;
+    }
+
+    (void) get_token(l, &l->top_token);
+    l->peeked = 1;
+
+    memcpy(t, &l->top_token, sizeof(token_t));
+    return &l->top_token;
 }
 

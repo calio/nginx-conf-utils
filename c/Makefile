@@ -1,8 +1,11 @@
 all: parser
 .PHONY: all
 
-parser: lexer.c parser.c
-	gcc -g3 -Wall -o $@ $+
+%.o: %.c
+	$(CC) -g3 -Wall -c -o $@ $+
+
+parser: lexer.o parser.o
+	$(CC) -o $@ $+
 
 clean:
-	-rm parser
+	-rm parser *.o
