@@ -5,6 +5,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "util.h"
+#include <assert.h>
 
 
 /*
@@ -29,6 +30,7 @@
  */
 
 #define MAX_PATH_SIZE  256
+
 #define expect(EXP, t)                                                  \
 do {                                                                    \
     printf("Expected " EXP " but got %s at line %d\n",                  \
@@ -43,14 +45,100 @@ void my_indent(parser_t *p) {
     }
 }
 
+char *json_escape(char *input, size_t len)
+{
+    size_t n = 0;
+    size_t i;
+    char *buf;
+    char *p;
+
+    for (i = 0; i < len; i++) {
+        switch (input[i]) {
+            case '\\':
+            case '/':
+            case '"':
+                n++;
+                break;
+            case '\b':
+            case '\t':
+            case '\n':
+            case '\f':
+            case '\r':
+                n++;
+                break;
+
+        }
+    }
+
+    buf = malloc(len + n + 1);
+    if (buf == NULL) {
+        perror("can't alloc buf");
+        return NULL;
+    }
+
+    p = buf;
+    for (i = 0; i < len; i++) {
+        assert(p <= buf + len + n + 1);
+        switch (input[i]) {
+            case '\\':
+            case '/':
+            case '"':
+                *p++ = '\\';
+                *p++ = input[i];
+                break;
+            case '\b':
+                *p++ = '\\';
+                *p++ = 'b';
+                break;
+            case '\t':
+                *p++ = '\\';
+                *p++ = 't';
+                break;
+            case '\n':
+                *p++ = '\\';
+                *p++ = 'n';
+                break;
+            case '\f':
+                *p++ = '\\';
+                *p++ = 'f';
+                break;
+            case '\r':
+                *p++ = '\\';
+                *p++ = 'r';
+                break;
+            default:
+                *p++ = input[i];
+        }
+    }
+
+    buf[len + n] = '\0';
+
+    return buf;
+}
+
+void print_json_tk(token_t *t)
+{
+    char *s;
+
+    s = json_escape(t->start, t->end - t->start);
+
+    printf("\"");
+    printf("%s", s);
+    printf("\"");
+
+    free(s);
+}
+
 void print_info(parser_t *p, char *name, token_t *t)
 {
-    my_indent(p);
-    printf("%s:%.*s\n", name, (int) (t->end - t->start), t->start);
+    //my_indent(p);
+    //printf("%s:%.*s\n", name, (int) (t->end - t->start), t->start);
 }
 
 int parse_args(parser_t *p, lexer_t *l, token_t *t)
 {
+    int n = 0;
+
     if (peek_token(l, t) == NULL) {
         return -1;
     }
@@ -70,6 +158,12 @@ int parse_args(parser_t *p, lexer_t *l, token_t *t)
         }
 
         print_info(p, "arg", t);
+        if (n++ == 0) {
+            print_json_tk(t);
+        } else {
+            printf(",");
+            print_json_tk(t);
+        }
 
         if (peek_token(l, t) == NULL) {
             return -1;
@@ -78,7 +172,7 @@ int parse_args(parser_t *p, lexer_t *l, token_t *t)
 
     /* t->type == TK_OPEN_BLOCK || t->type == TK_SEMI_COLON */
 
-    return 0;
+    return n;
 }
 
 int parse_directive(parser_t *p, lexer_t *l, token_t *t)
@@ -93,6 +187,7 @@ int parse_directive(parser_t *p, lexer_t *l, token_t *t)
     }
 
     print_info(p, "directive", t);
+    print_json_tk(t);
 
     return 0;
 }
@@ -107,6 +202,7 @@ int parse_block(parser_t *p, lexer_t *l, token_t *t)
         expect("TK_OPEN_BLOCK", t);
         return -1;
     }
+    printf("{");
 
     p->indent++;
 
@@ -121,6 +217,7 @@ int parse_block(parser_t *p, lexer_t *l, token_t *t)
         return -1;
     }
 
+    printf("}");
     p->indent--;
     return 0;
 }
@@ -137,6 +234,7 @@ int parse_map_content(parser_t *p, lexer_t *l, token_t *t)
             return -1;
         }
         print_info(p, "key", t);
+        print_json_tk(t);
 
         if (get_token(l, t) == NULL) {
             return -1;
@@ -147,6 +245,8 @@ int parse_map_content(parser_t *p, lexer_t *l, token_t *t)
             return -1;
         }
         print_info(p, "value", t);
+        printf(":");
+        print_json_tk(t);
 
         if (get_token(l, t) == NULL) {
             return -1;
@@ -164,6 +264,8 @@ int parse_map_content(parser_t *p, lexer_t *l, token_t *t)
         if (t->type == TK_CLOSE_BLOCK) {
             break;
         }
+
+        printf(",");
     }
 
     return 0;
@@ -174,6 +276,8 @@ int parse_map(parser_t *p, lexer_t *l, token_t *t)
     /* read "map" */
     (void) get_token(l, t);
     print_info(p, "directive", t);
+    print_json_tk(t);
+    printf(":[");
 
     if (get_token(l, t) == NULL) {
         return -1;
@@ -184,6 +288,7 @@ int parse_map(parser_t *p, lexer_t *l, token_t *t)
         return -1;
     }
     print_info(p, "arg", t);
+    print_json_tk(t);
 
     if (get_token(l, t) == NULL) {
         return -1;
@@ -194,6 +299,8 @@ int parse_map(parser_t *p, lexer_t *l, token_t *t)
         return -1;
     }
     print_info(p, "arg", t);
+    printf(",");
+    print_json_tk(t);
 
     if (get_token(l, t) == NULL) {
         return -1;
@@ -204,6 +311,8 @@ int parse_map(parser_t *p, lexer_t *l, token_t *t)
         return -1;
     }
     p->indent++;
+    printf(",");
+    printf("{");
 
     if (parse_map_content(p, l, t) != 0) {
         return -1;
@@ -218,6 +327,7 @@ int parse_map(parser_t *p, lexer_t *l, token_t *t)
         return -1;
     }
     p->indent--;
+    printf("}]");
 
     return 0;
 }
@@ -326,8 +436,10 @@ int parse_cmd(parser_t *p, lexer_t *l, token_t *t)
         return rc;
     }
 
+    printf(":[");
+
     rc = parse_args(p, l, t);
-    if (rc != 0) {
+    if (rc < 0) {
         return rc;
     }
 
@@ -336,12 +448,19 @@ int parse_cmd(parser_t *p, lexer_t *l, token_t *t)
     }
 
     if (t->type == TK_OPEN_BLOCK) {
-        return parse_block(p, l, t);
+        if (rc > 0) {
+            printf(",");
+        }
+
+        rc = parse_block(p, l, t);
+        printf("]");
+        return rc;
     }
 
     if (t->type == TK_SEMI_COLON) {
         (void) get_token(l, t);
 
+        printf("]");
         return 0;
     }
 
@@ -352,6 +471,7 @@ int parse_cmd(parser_t *p, lexer_t *l, token_t *t)
 int parse_doc(parser_t *p, lexer_t *l, token_t *t)
 {
     int rc;
+    int n = 0;
 
     while (1) {
         if (peek_token(l, t) == NULL) {
@@ -368,10 +488,17 @@ int parse_doc(parser_t *p, lexer_t *l, token_t *t)
             return 0;
         }
 
+        if (n == 0) {
+            n = 1;
+        } else {
+            printf(",");
+        }
+
         rc = parse_cmd(p, l, t);
         if (rc != 0) {
             return rc;
         }
+
     }
 
     return 0;
@@ -379,6 +506,7 @@ int parse_doc(parser_t *p, lexer_t *l, token_t *t)
 
 int parse(lexer_t *l, FILE *f)
 {
+    int rc;
     parser_t  parser;
     parser_t  *p;
     token_t    token;
@@ -389,7 +517,12 @@ int parse(lexer_t *l, FILE *f)
     p->state = parse_start;
     p->indent = 0;
 
-    return parse_doc(p, l, t);
+    printf("{");
+
+    rc =  parse_doc(p, l, t);
+
+    printf("}");
+    return rc;
 }
 
 int main(int argc, char **argv)
@@ -415,6 +548,6 @@ int main(int argc, char **argv)
     lexer_free(&lexer);
     fclose(f);
 
-    printf("Parse done\n");
+    //printf("Parse done\n");
     return 0;
 }
