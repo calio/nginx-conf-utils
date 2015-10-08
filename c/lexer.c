@@ -74,8 +74,9 @@ void lexer_free(lexer_t *l)
 
 static int cp_lex(lexer_t *ctx, token_t *t)
 {
-    char ch;
+    char ch, pch;
     int skip_char = 0;
+    int parsing_var = 0;
 
     t->type = TK_NONE;
     t->start = ctx->p;
@@ -129,6 +130,15 @@ static int cp_lex(lexer_t *ctx, token_t *t)
             if (ch == '\n' || ch == ' ' || ch == '\n' || ch == '\t'
                 || ch == ';' || ch == '{' || ch == '}')
             {
+                if (ch == '{' && pch == '$') {
+                    /* variable */
+                    parsing_var = 1;
+                    break;
+                }
+                if (ch == '}' && parsing_var) {
+                    parsing_var = 0;
+                    break;
+                }
                 ctx->p--;
                 t->end = ctx->p;
                 t->type = TK_ID;
@@ -186,6 +196,8 @@ static int cp_lex(lexer_t *ctx, token_t *t)
             return -1;
             break;
         }
+
+        pch = ch;
     }
 
     return 0;
