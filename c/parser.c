@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "lexer.h"
 #include "parser.h"
 #include "util.h"
@@ -13,6 +14,7 @@
  *     doc          = command*;
  *     command      = ( (directive args (';' | block))
  *                    | map
+ *                    | include
  *                    );
  *     directive    = ID;
  *     args         = arg*;
@@ -22,9 +24,11 @@
  *     map_content  = (key value ';')*;
  *     key          = ID|string;
  *     value        = ID|string;
+ *     include      = 'include' ID ';';
  *
  */
 
+#define MAX_PATH_SIZE  256
 #define expect(EXP, t)                                                  \
 do {                                                                    \
     printf("Expected " EXP " but got %s at line %d\n",                  \
@@ -53,7 +57,7 @@ int parse_args(parser_t *p, lexer_t *l, token_t *t)
 
     if (t->type == TK_EOF) {
         expect("TK_ID or TK_SEMI_COLON or TK_OPEN_BLOCK", t);
-        printf("EOF\n");
+        //printf("EOF\n");
         return -1;
     }
 
@@ -218,6 +222,84 @@ int parse_map(parser_t *p, lexer_t *l, token_t *t)
     return 0;
 }
 
+int parse_include(parser_t *p, lexer_t *l, token_t *t)
+{
+    parser_t old_parser;
+    lexer_t lexer;
+    FILE *f;
+    char *filename;
+    size_t s, len;
+
+    /* include */
+    (void) get_token(l, t);
+
+    if (get_token(l, t) == NULL) {
+        return -1;
+    }
+
+    if (t->type != TK_ID && t->type != TK_STRING) {
+        expect("TK_ID or TK_STRING", t);
+        return -1;
+    }
+
+    filename = malloc(MAX_PATH_SIZE);
+    if (filename == NULL) {
+        perror("Allocate memory or filename");
+        return -1;
+    }
+
+    s = t->end - t->start;
+
+    getcwd(filename, MAX_PATH_SIZE);
+    len = strnlen(filename, MAX_PATH_SIZE);
+
+    if (len + s >= MAX_PATH_SIZE) {
+        printf("filename too long");
+        return -1;
+    }
+
+    filename[len] = '/';
+
+    if (*t->start == '"' || *t->start == '\'') {
+        /* strip quotes */
+        memcpy(filename + len + 1, t->start + 1, s - 1);
+        filename[len + s - 1] = '\0';
+    } else {
+        memcpy(filename + len + 1, t->start, s);
+        filename[len + s + 1] = '\0';
+    }
+
+    f = fopen(filename, "r");
+    if (f == NULL) {
+        printf("Can't open file %s\n", filename);
+        return -1;
+    }
+
+    lexer_init(&lexer, f);
+    lexer_skip(&lexer, 1, 1);
+
+    memcpy(&old_parser, p, sizeof(parser_t));
+
+    p->state = parse_start;
+
+    if (parse_doc(p, &lexer, t) != 0) {
+        return -1;
+    }
+
+    memcpy(p, &old_parser, sizeof(parser_t));
+
+    if (get_token(l, t) == NULL) {
+        return -1;
+    }
+
+    if (t->type != TK_SEMI_COLON) {
+        expect("TK_SEMI_COLON", t);
+        return -1;
+    }
+
+    return 0;
+}
+
 int parse_cmd(parser_t *p, lexer_t *l, token_t *t)
 {
     int rc;
@@ -231,6 +313,13 @@ int parse_cmd(parser_t *p, lexer_t *l, token_t *t)
     {
         return parse_map(p, l, t);
     }
+
+    if (t->type == TK_ID && t->end - t->start == 7
+        && strncmp("include", t->start, 7) == 0)
+    {
+        return parse_include(p, l, t);
+    }
+
 
     rc = parse_directive(p, l, t);
     if (rc != 0) {
@@ -264,11 +353,6 @@ int parse_doc(parser_t *p, lexer_t *l, token_t *t)
 {
     int rc;
 
-    if (t->type == TK_EOF) {
-        printf("EOF\n");
-        return 0;
-    }
-
     while (1) {
         if (peek_token(l, t) == NULL) {
             return -1;
@@ -276,7 +360,7 @@ int parse_doc(parser_t *p, lexer_t *l, token_t *t)
 
         if (t->type == TK_EOF) {
             (void) get_token(l, t);
-            printf("EOF\n");
+            //printf("EOF\n");
             break;
         }
 
@@ -319,7 +403,7 @@ int main(int argc, char **argv)
 
     FILE *f = fopen(argv[1], "r");
     if (f == NULL) {
-        perror("File error");
+        printf("Can't open file %s\n", argv[1]);
         return -1;
     }
 
