@@ -6,6 +6,25 @@
 #include "util.h"
 
 
+/*
+ * Grammar:
+ *
+ *     main        := doc;
+ *     doc          = command*;
+ *     command      = ( (directive args (';' | block))
+ *                    | map
+ *                    );
+ *     directive    = ID;
+ *     args         = arg*;
+ *     arg          = ID|sring;
+ *     block        = '{' doc '}';
+ *     map          = 'map' ID|string ID '{' map_content '}';
+ *     map_content  = (key value ';')*;
+ *     key          = ID|string;
+ *     value        = ID|string;
+ *
+ */
+
 #define expect(EXP, t)                                                  \
 do {                                                                    \
     printf("Expected " EXP " but got %s at line %d\n",                  \
