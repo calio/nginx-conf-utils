@@ -1,0 +1,6 @@
+[TK_ID]proxy_pass
+[TK_SPACE]   
+[TK_ID]http://127.0.0.1:8070/?key=/cdn-cgi/custom/${custom_asset}
+[TK_SEMI_COLON];
+[TK_SPACE]
+[TK_EOF]
