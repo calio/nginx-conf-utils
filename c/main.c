@@ -1,16 +1,15 @@
-/*
- *
- */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include "lexer.h"
+#include "parser.h"
 #include "util.h"
 
 int main(int argc, char **argv)
 {
-    lexer_t   lexer;
-    token_t   token;
-    token_t  *t;
+    lexer_t    lexer;
 
     if (argc < 2) {
         printf("Usage: %s file\n", argv[0]);
@@ -19,20 +18,18 @@ int main(int argc, char **argv)
 
     FILE *f = fopen(argv[1], "r");
     if (f == NULL) {
-        perror("File error");
+        printf("Can't open file %s\n", argv[1]);
         return -1;
     }
 
     lexer_init(&lexer, f);
+    lexer_skip(&lexer, 1, 1);
 
-    while (1) {
-        t = get_token(&lexer, &token);
-        print_tk(t);
+    parse(&lexer, f);
 
-        if (t->type == TK_EOF) {
-            break;
-        }
-    }
+    lexer_free(&lexer);
+    fclose(f);
 
-	return 0;
+    //printf("Parse done\n");
+    return 0;
 }

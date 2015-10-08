@@ -1,18 +1,21 @@
-all: parser
+all: ncfp
 
 %.o: %.c
 	$(CC) -g3 -Wall -c -o $@ $+
 
-parser: lexer.o parser.o util.o
+ncfp: lexer.o parser.o util.o main.o
 	$(CC) -o $@ $+
 
 lexer_test: lexer_test.o lexer.o util.o
 	$(CC) -o $@ $+
 
+parser_test: parser_test.o lexer.o parser.o util.o
+	$(CC) -o $@ $+
+
 clean:
 	rm -f parser lexer_test *.o
 
-test: lexer_test
+test: lexer_test parser_test
 	@./test.sh
 
-.PHONY: all clean
+.PHONY: all clean test

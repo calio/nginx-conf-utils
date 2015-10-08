@@ -3,14 +3,13 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "lexer.h"
-#include "util.h"
+#include "parser.h"
 
 int main(int argc, char **argv)
 {
     lexer_t   lexer;
-    token_t   token;
-    token_t  *t;
 
     if (argc < 2) {
         printf("Usage: %s file\n", argv[0]);
@@ -24,15 +23,12 @@ int main(int argc, char **argv)
     }
 
     lexer_init(&lexer, f);
+    lexer_skip(&lexer, 1, 1);
 
-    while (1) {
-        t = get_token(&lexer, &token);
-        print_tk(t);
+    parse(&lexer, f);
 
-        if (t->type == TK_EOF) {
-            break;
-        }
-    }
+    lexer_free(&lexer);
+    fclose(f);
 
 	return 0;
 }

@@ -12,6 +12,7 @@ typedef struct {
     enum parser_state state;
 } parser_t;
 
+int parse(lexer_t *l, FILE *f);
 int parse_doc(parser_t *p, lexer_t *l, token_t *t);
 
 #endif /* ifndef PARSER_H */

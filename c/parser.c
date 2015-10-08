@@ -190,6 +190,8 @@ int parse_directive(parser_t *p, lexer_t *l, token_t *t)
 
 int parse_block(parser_t *p, lexer_t *l, token_t *t)
 {
+    int rc;
+
     if (get_token(l, t) == NULL) {
         return -1;
     }
@@ -202,7 +204,10 @@ int parse_block(parser_t *p, lexer_t *l, token_t *t)
 
     p->indent++;
 
-    parse_doc(p, l, t);
+    rc = parse_doc(p, l, t);
+    if (rc != 0) {
+        return rc;
+    }
 
     if (get_token(l, t) == NULL) {
         return -1;
@@ -447,6 +452,10 @@ int parse_cmd(parser_t *p, lexer_t *l, token_t *t)
         printf(",");
 
         rc = parse_block(p, l, t);
+        if (rc != 0) {
+            return rc;
+        }
+
         printf("]");
         return rc;
     }
@@ -514,34 +523,11 @@ int parse(lexer_t *l, FILE *f)
     printf("[");
 
     rc =  parse_doc(p, l, t);
+    if (rc != 0) {
+        return rc;
+    }
 
     printf("]");
     return rc;
 }
 
-int main(int argc, char **argv)
-{
-    lexer_t    lexer;
-
-    if (argc < 2) {
-        printf("Usage: %s file\n", argv[0]);
-        return 0;
-    }
-
-    FILE *f = fopen(argv[1], "r");
-    if (f == NULL) {
-        printf("Can't open file %s\n", argv[1]);
-        return -1;
-    }
-
-    lexer_init(&lexer, f);
-    lexer_skip(&lexer, 1, 1);
-
-    parse(&lexer, f);
-
-    lexer_free(&lexer);
-    fclose(f);
-
-    //printf("Parse done\n");
-    return 0;
-}

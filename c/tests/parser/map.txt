@@ -1,0 +1,14 @@
+[
+  [
+    "map",
+    "$request_uri",
+    "$pe_mode",
+    {
+      "default": "0",
+      "\"~*^/cdn-cgi/pe.*https?%3a%2f%2f(localhost|(127|192\\.168|172\\.16|10|204\\.93\\.240|204\\.93\\.177|204\\.93\\.173|199\\.27|173\\.245)\\.[0-9]+)\"": "invalid",
+      "\"~*^/cdn-cgi/pe\\?(_cfgetx=[^&]+&)?url=https?%3a%2f%2f[^&]{4,}%3f[^&]*$\"": "url-agg",
+      "\"~*^/cdn-cgi/pe\\?(_cfgetx=[^&]+&)?url=https?%3a%2f%2f[^&]{4,}$\"": "url",
+      "\"~^/cdn-cgi/pe\"": "invalid"
+    }
+  ]
+]
