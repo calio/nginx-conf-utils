@@ -31,13 +31,13 @@ local function gen_server(t, server, i)
     local server_names, server_listens
 
     if type(server.server_name) == "table" then
-        server_names = concat(server.server_name, "&#92;n")
+        server_names = concat(server.server_names, "&#92;n")
     else
         server_names = "-"
     end
 
     server_listens = ""
-    for i, v in ipairs(server.listen) do
+    for i, v in ipairs(server.listens) do
         if (server_listens ~= "") then
             server_listens = server_listens .. "&#92;n" .. v.addr
         else
@@ -49,7 +49,7 @@ local function gen_server(t, server, i)
             server_names,
             server_listens))
 
-    gen_locations(t, server.location, i)
+    gen_locations(t, server.locations, i)
 
     insert(t, "\n")
 end

@@ -42,9 +42,9 @@ end
 
 local function transform_server(server_block)
     local server = {}
-    local server_name = {}
-    local listen = {}
-    local location = {}
+    local server_names = {}
+    local listens = {}
+    local locations = {}
     assert(type(server_block) == "table")
 
     for i, v in ipairs(server_block) do
@@ -57,7 +57,7 @@ local function transform_server(server_block)
             else
                 path = v[2]
             end
-            location[#location + 1] = path
+            locations[#locations + 1] = path
         elseif (directive == "listen") then
             local addr = v[2]
             local args
@@ -67,24 +67,24 @@ local function transform_server(server_block)
                     args[#args + 1] = v[i]
                 end
             end
-            listen[#listen + 1] = { addr = addr, args = args }
+            listens[#listens + 1] = { addr = addr, args = args }
         elseif (directive == "server_name") then
             for i = 2, #v do
-                server_name[#server_name + 1] = v[i]
+                server_names[#server_names + 1] = v[i]
             end
         else
             --server[#server + 1] = transform_cmd(v)
         end
     end
 
-    if (#server_name > 0) then
-        server.server_name = server_name
+    if (#server_names > 0) then
+        server.server_names = server_names
     end
-    if (#listen > 0) then
-        server.listen = listen
+    if (#listens > 0) then
+        server.listens = listens
     end
-    if (#location > 0) then
-        server.location = location
+    if (#locations > 0) then
+        server.locations = locations
     end
     return server
 end

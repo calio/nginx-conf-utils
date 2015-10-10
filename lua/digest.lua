@@ -7,21 +7,21 @@ local function print_info(tree)
 
     for _, s in ipairs(servers) do
         print("\nserver names:")
-        if (s.server_name) then
-            for i, v in ipairs(s.server_name) do
+        if (s.server_names) then
+            for i, v in ipairs(s.server_names) do
                 print("  " .. v)
             end
         end
-        if (s.listen) then
-            print("listen:")
-            for i, v in ipairs(s.listen) do
+        if (s.listens) then
+            print("listens:")
+            for i, v in ipairs(s.listens) do
                 print("  " .. v.addr)
             end
         end
 
-        if (s.location) then
+        if (s.locations) then
             print("location:")
-            for _, l in ipairs(s.location) do
+            for _, l in ipairs(s.locations) do
                 print("  " .. l)
             end
         end
