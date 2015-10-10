@@ -47,6 +47,13 @@ local function transform_location(location_block, l)
         if (directive == "internal") then
             l.internal = true
         end
+
+        if (directive == "root" or directive == "content_by_lua"
+            or directive == "proxy_pass" or directive == "return"
+            or directive == "content_by_lua_file")
+        then
+            l.content_handler = v
+        end
     end
 end
 
