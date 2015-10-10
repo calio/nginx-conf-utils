@@ -1,5 +1,6 @@
 local cjson = require("cjson")
 local digest = require("digest")
+local rewrite = require("rewrite")
 
 local function usage()
     print("Usage:\n\t" .. arg[0] .. " file")
@@ -150,9 +151,15 @@ local function main()
     local d = get_json_data(arg[1])
     local tree = transform(d)
 
-    --print(cjson.encode(tree))
-
-    digest.print_info(tree)
+    local cmd = arg[2]
+    if cmd == "digest" then
+        digest.print_info(tree)
+    elseif cmd =="graph" then
+        print(rewrite.get_graph(tree))
+    else
+        --print(cjson.encode(tree))
+        print(rewrite.get_graph(tree))
+    end
 end
 
 main()
