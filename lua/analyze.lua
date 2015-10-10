@@ -1,4 +1,5 @@
 local cjson = require("cjson")
+local digest = require("digest")
 
 local function usage()
     print("Usage:\n\t" .. arg[0] .. " file")
@@ -103,7 +104,7 @@ local function transform_http(http_block)
             servers[#servers + 1] = transform_server(v[2])
         elseif (directive == "upstream") then
             upstreams[#upstreams + 1] = transform_upstream(v[2])
-        elseif (directive == "somethingelse") then
+        else
         end
 
     end
@@ -140,34 +141,6 @@ local function transform(ncfp_json)
     return d
 end
 
-local function print_info(tree)
-    local servers = tree.http.servers
-
-    local nservers = #servers
-
-    for _, s in ipairs(servers) do
-        print("\nserver names:")
-        if (s.server_name) then
-            for i, v in ipairs(s.server_name) do
-                print("  " .. v)
-            end
-        end
-        if (s.listen) then
-            print("listen:")
-            for i, v in ipairs(s.listen) do
-                print("  " .. v.addr)
-            end
-        end
-
-        if (s.location) then
-            print("location:")
-            for _, l in ipairs(s.location) do
-                print("  " .. l)
-            end
-        end
-    end
-end
-
 local function main()
     if not arg[1] then
         usage()
@@ -179,7 +152,7 @@ local function main()
 
     --print(cjson.encode(tree))
 
-    print_info(tree)
+    digest.print_info(tree)
 end
 
 main()
