@@ -96,6 +96,16 @@ static int cp_lex(lexer_t *ctx, token_t *t)
                 t->type = TK_SPACE;
                 ctx->state = parsing_space;
                 t->start = ctx->p - 1;
+            } else if (ch == '(') {
+                t->start = ctx->p - 1;
+                t->end = ctx->p;
+                t->type = TK_LEFT_PAREN;
+                return 0;
+            } else if (ch == ')') {
+                t->start = ctx->p - 1;
+                t->end = ctx->p;
+                t->type = TK_RIGHT_PAREN;
+                return 0;
             } else if (ch == '{') {
                 /* open block */
                 t->start = ctx->p - 1;

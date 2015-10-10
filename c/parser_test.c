@@ -9,7 +9,8 @@
 
 int main(int argc, char **argv)
 {
-    lexer_t   lexer;
+    int      rc;
+    lexer_t  lexer;
 
     if (argc < 2) {
         printf("Usage: %s file\n", argv[0]);
@@ -25,10 +26,10 @@ int main(int argc, char **argv)
     lexer_init(&lexer, f);
     lexer_skip(&lexer, 1, 1);
 
-    parse(&lexer, f);
+    rc = parse(&lexer, f);
 
     lexer_free(&lexer);
     fclose(f);
 
-	return 0;
+    return rc;
 }

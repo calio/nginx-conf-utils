@@ -412,6 +412,47 @@ int parse_include(parser_t *p, lexer_t *l, token_t *t)
     return 0;
 }
 
+int parse_if(parser_t *p, lexer_t *l, token_t *t)
+{
+    int rc;
+
+    (void) get_token(l, t);
+    printf("[");
+    print_json_tk(t);
+
+    if (get_token(l, t) == NULL) {
+        return -1;
+    }
+
+    if (t->type != TK_LEFT_PAREN) {
+        expect("TK_LEFT_PAREN", t);
+        return -1;
+    }
+
+    while (1) {
+        if (get_token(l, t) == NULL) {
+            return -1;
+        }
+
+        if (t->type == TK_RIGHT_PAREN) {
+            break;
+        }
+
+        printf(",");
+        print_json_tk(t);
+    }
+
+    printf(",");
+    rc = parse_block(p, l, t);
+    if (rc != 0) {
+        return rc;
+    }
+
+    printf("]");
+
+    return 0;
+}
+
 int parse_cmd(parser_t *p, lexer_t *l, token_t *t)
 {
     int rc;
@@ -430,6 +471,12 @@ int parse_cmd(parser_t *p, lexer_t *l, token_t *t)
         && strncmp("include", t->start, 7) == 0)
     {
         return parse_include(p, l, t);
+    }
+
+    if (t->type == TK_ID && t->end - t->start == 2
+        && strncmp("if", t->start, 2) == 0)
+    {
+        return parse_if(p, l, t);
     }
 
     printf("[");

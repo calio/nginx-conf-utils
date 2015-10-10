@@ -1,7 +1,7 @@
 all: ncfp
 
-%.o: %.c
-	$(CC) -g3 -Wall -c -o $@ $+
+%.o: %.c token.h parser.h lexer.h util.h
+	$(CC) -g3 -Wall -c -o $@ $<
 
 ncfp: lexer.o parser.o util.o main.o
 	$(CC) -o $@ $+
