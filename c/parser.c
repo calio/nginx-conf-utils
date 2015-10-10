@@ -430,14 +430,25 @@ int parse_if(parser_t *p, lexer_t *l, token_t *t)
     }
 
     while (1) {
-        if (get_token(l, t) == NULL) {
+        if (peek_token(l, t) == NULL) {
             return -1;
         }
 
         if (t->type == TK_RIGHT_PAREN) {
+            (void) get_token(l, t);
             break;
         }
 
+        if (t->type == TK_OPEN_BLOCK) {
+            break;
+        }
+
+        if (t->type != TK_ID && t->type != TK_STRING) {
+            expect("TK_ID or TK_STRING", t);
+            return -1;
+        }
+
+        (void) get_token(l, t);
         printf(",");
         print_json_tk(t);
     }

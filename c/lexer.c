@@ -76,7 +76,7 @@ static int cp_lex(lexer_t *ctx, token_t *t)
 {
     char ch, pch;
     int skip_char = 0;
-    int parsing_var = 0;
+    int is_variable = 0;
 
     t->type = TK_NONE;
     t->start = ctx->p;
@@ -124,6 +124,14 @@ static int cp_lex(lexer_t *ctx, token_t *t)
                 t->end = ctx->p;
                 t->type = TK_SEMI_COLON;
                 return 0;
+            } else if (ch == '$') {
+                /* var */
+                t->start = ctx->p - 1;
+                ctx->state = parsing_var;
+            } else if ('0' <= ch && ch <= '9') {
+                /* num */
+                t->start = ctx->p - 1;
+                ctx->state = parsing_num;
             } else {
                 /* parsing string/token */
                 t->start = ctx->p - 1;
@@ -136,17 +144,41 @@ static int cp_lex(lexer_t *ctx, token_t *t)
                 }
             }
             break;
+        case parsing_var:
+            if (!(('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z')
+                  || ch == '_' || ('0' <= ch && ch <= '9')))
+            {
+                ctx->p--;
+                t->end = ctx->p;
+                t->type = TK_ID;
+                ctx->state = start;
+                return 0;
+            }
+            break;
+        case parsing_num:
+            if (!('0' <= ch && ch <= '9')) {
+                if (('a' <= ch && 'z' <= ch) || ('A' <= ch || 'Z' <= ch)) {
+                    t->end = ctx->p;
+                } else {
+                    ctx->p--;
+                    t->end = ctx->p;
+                }
+                t->type = TK_ID;
+                ctx->state = start;
+                return 0;
+            }
+            break;
         case parsing_token:
             if (ch == '\n' || ch == ' ' || ch == '\n' || ch == '\t'
                 || ch == ';' || ch == '{' || ch == '}')
             {
                 if (ch == '{' && pch == '$') {
                     /* variable */
-                    parsing_var = 1;
+                    is_variable = 1;
                     break;
                 }
-                if (ch == '}' && parsing_var) {
-                    parsing_var = 0;
+                if (ch == '}' && is_variable) {
+                    is_variable = 0;
                     break;
                 }
                 ctx->p--;

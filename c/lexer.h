@@ -26,6 +26,8 @@ enum lexer_state {
     parsing_token,
     parsing_sg_string,
     parsing_db_string,
+    parsing_var,
+    parsing_num,
 };
 
 typedef struct {
