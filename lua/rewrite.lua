@@ -20,10 +20,13 @@ end
 
 local function gen_locations(t, locations, sid)
     for i, v in ipairs(locations) do
-        insert(t, format('location%d_%d [label="{ %s }"]\n', sid, i,
-                dot_escape(v)))
-        insert(t, format('server%d -> location%d_%d [style=dotted];\n',
-                sid, sid, i))
+        insert(t, format('location%d_%d [label="{ %s|%s }"]\n',
+                sid, i,
+                v.internal and "internal" or "-",
+                dot_escape(v.path)))
+        insert(t, format('server%d -> location%d_%d [style=%s];\n',
+                sid, sid, i,
+                v.internal and "dotted" or "solid"))
     end
 end
 

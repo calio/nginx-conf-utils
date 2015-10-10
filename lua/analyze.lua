@@ -40,6 +40,16 @@ local function transform_events(events_block)
     return events
 end
 
+local function transform_location(location_block, l)
+    for i, v in ipairs(location_block) do
+        local directive = v[1]
+
+        if (directive == "internal") then
+            l.internal = true
+        end
+    end
+end
+
 local function transform_server(server_block)
     local server = {}
     local server_names = {}
@@ -51,13 +61,19 @@ local function transform_server(server_block)
         local directive = v[1]
 
         if (directive == "location") then
+            local l = {}
             local path
             if v[2] == "=" or v[2] == "~" or v[2] == "~*" or v[2] == "^~" then
-                path = v[2] .. " " .. v[3]
+                l.op = v[2]
+                l.path = v[3]
+                assert(type(v[4]) == "table")
+                l.block = transform_location(v[4], l)
             else
-                path = v[2]
+                l.path = v[2]
+                assert(type(v[3]) == "table")
+                l.block = transform_location(v[3], l)
             end
-            locations[#locations + 1] = path
+            locations[#locations + 1] = l
         elseif (directive == "listen") then
             local addr = v[2]
             local args

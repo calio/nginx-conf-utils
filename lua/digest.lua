@@ -22,7 +22,7 @@ local function print_info(tree)
         if (s.locations) then
             print("location:")
             for _, l in ipairs(s.locations) do
-                print("  " .. l)
+                print("  " .. (l.op and l.op .. " " or "") .. l.path)
             end
         end
     end
