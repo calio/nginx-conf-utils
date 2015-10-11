@@ -42,17 +42,17 @@ local function gen_server(t, server, i)
     local server_names, server_listens
 
     if type(server.server_name) == "table" then
-        server_names = concat(server.server_names, "&#92;n")
+        server_names = concat(server.server_name, "&#92;n")
     else
         server_names = "-"
     end
 
     server_listens = ""
-    for i, v in ipairs(server.listens) do
+    for i, v in ipairs(server.listen) do
         if (server_listens ~= "") then
-            server_listens = server_listens .. "&#92;n" .. v.addr
+            server_listens = server_listens .. "&#92;n" .. v
         else
-            server_listens = v.addr
+            server_listens = v
         end
     end
 
@@ -60,7 +60,7 @@ local function gen_server(t, server, i)
             server_names,
             server_listens))
 
-    gen_locations(t, server.locations, i)
+    gen_locations(t, server.location, i)
 
     insert(t, "\n")
 end
@@ -69,7 +69,7 @@ local function gen_servers(t, servers)
     for i, s in ipairs(servers) do
         gen_server(t, s, i)
         -- TODO remove this
-        break
+        --break
     end
 end
 
@@ -77,7 +77,7 @@ local function digraph(t, tree)
     insert(t, "digraph structs {\n")
     insert(t, "node [shape=record];\n\n")
 
-    gen_servers(t, tree.http.servers)
+    gen_servers(t, tree.http.server)
 
     insert(t, "}\n")
 end

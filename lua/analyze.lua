@@ -103,11 +103,7 @@ local function transform_server_name(items, node)
 end
 
 local function transform_content_handler(items, node, parent)
-    if not parent.content_handler then
-        parent.content_handler = {}
-    end
-
-    insert(parent.content_handler, items)
+    parent.content_handler = items
 
     if not parent.block then
         parent.block = {}
