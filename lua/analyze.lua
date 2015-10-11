@@ -2,6 +2,11 @@ local cjson = require("cjson")
 local digest = require("digest")
 local rewrite = require("rewrite")
 
+local insert = table.insert
+
+local trans_func = {}
+
+
 local function usage()
     print("Usage:\n\t" .. arg[0] .. " file")
 end
@@ -19,151 +24,110 @@ local function transform_cmd(cmd_json)
     if #cmd_json == 2 then
         -- key: value format
         return {
-            [key] = cmd_json[2]
+            name = key,
+            arg = cmd_json[2]
         }
     else
         table.remove(cmd_json, 1)
         return {
-            [key] = cmd_json
+            name = key,
+            arg = cmd_json
         }
     end
 end
 
-local function transform_events(events_block)
-    local events = {}
-    assert(type(events_block) == "table")
+local function transform(items, node, parent)
 
-    for i, v in ipairs(events_block) do
-        events[#events + 1] = transform_cmd(v)
-    end
-
-    return events
-end
-
-local function transform_location(location_block, l)
-    for i, v in ipairs(location_block) do
+    for i, v in ipairs(items) do
         local directive = v[1]
 
-        if (directive == "internal") then
-            l.internal = true
-        end
-
-        if (directive == "root" or directive == "content_by_lua"
-            or directive == "proxy_pass" or directive == "return"
-            or directive == "content_by_lua_file")
-        then
-            l.content_handler = v
-        end
-    end
-end
-
-local function transform_server(server_block)
-    local server = {}
-    local server_names = {}
-    local listens = {}
-    local locations = {}
-    assert(type(server_block) == "table")
-
-    for i, v in ipairs(server_block) do
-        local directive = v[1]
-
-        if (directive == "location") then
-            local l = {}
-            local path
-            if v[2] == "=" or v[2] == "~" or v[2] == "~*" or v[2] == "^~" then
-                l.op = v[2]
-                l.path = v[3]
-                assert(type(v[4]) == "table")
-                l.block = transform_location(v[4], l)
-            else
-                l.path = v[2]
-                assert(type(v[3]) == "table")
-                l.block = transform_location(v[3], l)
-            end
-            locations[#locations + 1] = l
-        elseif (directive == "listen") then
-            local addr = v[2]
-            local args
-            if #v > 2 then
-                args = {}
-                for i = 3, #v do
-                    args[#args + 1] = v[i]
+        local trans = trans_func[directive]
+        if (trans) then
+            local func = trans.func
+            if trans.multi then
+                if not node[directive] then
+                    node[directive] = {}
                 end
-            end
-            listens[#listens + 1] = { addr = addr, args = args }
-        elseif (directive == "server_name") then
-            for i = 2, #v do
-                server_names[#server_names + 1] = v[i]
+                node[directive][#node[directive] + 1] = func(v, {}, node)
+            else
+                node[directive] = func(v, {}, node)
             end
         else
-            --server[#server + 1] = transform_cmd(v)
+            if not node.block then
+                node.block = {}
+            end
+            node.block[#node.block + 1] = transform_cmd(v)
         end
     end
 
-    if (#server_names > 0) then
-        server.server_names = server_names
-    end
-    if (#listens > 0) then
-        server.listens = listens
-    end
-    if (#locations > 0) then
-        server.locations = locations
-    end
-    return server
+    return node
 end
 
-local function transform_upstream(upstream_block)
+local function transform_events(items, node)
+    node.name = items[1]
+    return transform(items[2], node)
 end
 
-local function transform_http(http_block)
-    local http = {}
-    local servers = {}
-    local upstreams = {}
-    assert(type(http_block) == "table")
+local function transform_http(items, node)
+    node.name = items[1]
+    return transform(items[2], node)
+end
 
-    for i, v in ipairs(http_block) do
-        local directive = v[1]
+local function transform_server(items, node)
+    node.name = items[1]
+    return transform(items[2], node)
+end
 
-        if (directive == "server") then
-            servers[#servers + 1] = transform_server(v[2])
-        elseif (directive == "upstream") then
-            upstreams[#upstreams + 1] = transform_upstream(v[2])
-        else
-        end
+local function transform_location(items, node)
+    node.name = items[1]
 
+    local v = items
+    if v[2] == "=" or v[2] == "~" or v[2] == "~*" or v[2] == "^~" then
+        node.op = v[2]
+        node.path = v[3]
+
+        return transform(v[4], node)
+    else
+        node.path = v[2]
+
+        return transform(v[3], node)
+    end
+end
+
+local function transform_listen(items, node)
+    return items[2]
+end
+
+local function transform_server_name(items, node)
+    return items[2]
+end
+
+local function transform_content_handler(items, node, parent)
+    if not parent.content_handler then
+        parent.content_handler = {}
     end
 
-    http.servers = servers
-    http.upstreams = upstreams
+    insert(parent.content_handler, items)
 
-    return http
-end
-
--- transform JSON data get from ncfp to a better tree structure
--- events, http, globals
-local function transform(ncfp_json)
-    local d = {}
-    local globals = {}
-
-    for i, v in ipairs(ncfp_json) do
-        local directive = v[1]
-
-        if (directive == "events") then
-            local events = transform_events(v[2])
-            d.events = events
-        elseif (directive == "http") then
-            local http = transform_http(v[2])
-            d.http = http
-        else
-            -- global confs
-            globals[#globals + 1] = transform_cmd(v)
-        end
+    if not parent.block then
+        parent.block = {}
     end
 
-    d.globals = globals
-
-    return d
+    insert(parent.block, transform_cmd(items))
 end
+
+
+trans_func.events = { func = transform_events, multi = false }
+trans_func.http = { func = transform_http, multi = false }
+trans_func.server = { func = transform_server, multi = true }
+trans_func.location = { func = transform_location, multi = true }
+trans_func.listen = { func = transform_listen, multi = true }
+trans_func.server_name = { func = transform_server_name, multi = true }
+trans_func.proxy_pass = { func = transform_content_handler, multi = false }
+trans_func.content_by_lua = { func = transform_content_handler, multi = false }
+trans_func.content_by_lua_file = { func = transform_content_handler,
+        multi = false }
+trans_func.root = { func = transform_content_handler, multi = false }
 
 local function main()
     if not arg[1] then
@@ -172,15 +136,16 @@ local function main()
     end
 
     local d = get_json_data(arg[1])
-    local tree = transform(d)
+    local tree = transform(d, {})
 
     local cmd = arg[2]
     if cmd == "digest" then
         digest.print_info(tree)
-    elseif cmd =="graph" then
+    elseif cmd == "graph" then
         print(rewrite.get_graph(tree))
+    elseif cmd == "json" then
+        print(cjson.encode(tree))
     else
-        --print(cjson.encode(tree))
         print(rewrite.get_graph(tree))
     end
 end
