@@ -5,6 +5,7 @@ local rewrite = require("rewrite")
 local insert = table.insert
 
 local trans_func = {}
+local nlocation = 0
 
 
 local function usage()
@@ -79,7 +80,9 @@ local function transform_server(items, node)
 end
 
 local function transform_location(items, node)
+    nlocation = nlocation + 1
     node.name = items[1]
+    node.id = nlocation
 
     local v = items
     if v[2] == "=" or v[2] == "~" or v[2] == "~*" or v[2] == "^~" then
@@ -112,6 +115,28 @@ local function transform_content_handler(items, node, parent)
     insert(parent.block, transform_cmd(items))
 end
 
+local function transform_if(items, node, parent)
+    if not parent.block then
+        parent.block = {}
+    end
+
+    local if_block = {
+        name = "if",
+        condition = {}
+    }
+
+    for i = 2, #items do
+        if type(items[i]) == "table" then
+            --if_block.block = items[i]
+            if_block.block = transform(items[i], {}, if_block).block
+            break
+        end
+
+        insert(if_block.condition, items[i])
+    end
+
+    insert(parent.block, if_block)
+end
 
 trans_func.events = { func = transform_events, multi = false }
 trans_func.http = { func = transform_http, multi = false }
@@ -119,6 +144,8 @@ trans_func.server = { func = transform_server, multi = true }
 trans_func.location = { func = transform_location, multi = true }
 trans_func.listen = { func = transform_listen, multi = true }
 trans_func.server_name = { func = transform_server_name, multi = true }
+trans_func["if"] = { func = transform_if }
+
 trans_func.proxy_pass = { func = transform_content_handler, multi = false }
 trans_func.content_by_lua = { func = transform_content_handler, multi = false }
 trans_func.content_by_lua_file = { func = transform_content_handler,
